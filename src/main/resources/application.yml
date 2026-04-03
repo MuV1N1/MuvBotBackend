@@ -1,0 +1,36 @@
+server:
+  port: 8080
+
+spring:
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: gpt-4o-mini
+  application:
+    name: muvbot
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASS}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  sql:
+    init:
+      mode: always
+
+discord:
+  bot:
+    token: ${DISCORD_BOT_TOKEN}
+  client:
+    id: ${DISCORD_CLIENT_ID}
+    secret: ${DISCORD_CLIENT_SECRET}
+  redirect:
+    uri: ${DISCORD_REDIRECT_URI}
