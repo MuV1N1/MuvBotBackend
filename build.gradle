@@ -38,7 +38,7 @@ dependencies {
     runtimeOnly 'org.postgresql:postgresql'
     
     // Discord JDA
-    implementation 'net.dv8tion:JDA:6.3.1'
+    implementation 'net.dv8tion:JDA:6.4.1'
 
     // Utilities
     compileOnly 'org.projectlombok:lombok:1.18.28'
