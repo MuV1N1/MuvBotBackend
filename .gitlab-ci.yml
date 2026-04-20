@@ -1,0 +1,58 @@
+stages:
+  - build
+  - deploy_staging
+
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
+  IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+  IMAGE_TAG_LATEST: $CI_REGISTRY_IMAGE:latest
+  APP_NAME: muvbot
+  APP_PORT: 8080
+
+build:
+  stage: build
+  image: docker:24.0.5
+  services:
+    - docker:24.0.5-dind
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+  script:
+    - docker build --build-arg OPENAI_API_KEY="$OPENAI_API_KEY" --build-arg DB_URL="$DB_URL" --build-arg DB_USER="$DB_USER" --build-arg DB_PASS="$DB_PASS" --build-arg DISCORD_BOT_TOKEN="$DISCORD_BOT_TOKEN" --build-arg DISCORD_CLIENT_ID="$DISCORD_CLIENT_ID" --build-arg DISCORD_CLIENT_SECRET="$DISCORD_CLIENT_SECRET" --build-arg DISCORD_REDIRECT_URI="$DISCORD_REDIRECT_URI" -t $IMAGE_TAG -t $IMAGE_TAG_LATEST .
+    - docker push $IMAGE_TAG
+    - docker push $IMAGE_TAG_LATEST
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"
+
+.deploy_template: &deploy_template
+  image: docker:24.0.5
+  before_script:
+    - 'command -v ssh-agent >/dev/null || ( apk add --no-cache openssh-client )'
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+    - export DOCKER_HOST="ssh://$SERVER_USER@$SERVER_IP"
+  script:
+    - docker pull $IMAGE_TAG
+    - docker stop $APP_NAME || true
+    - docker rm $APP_NAME || true
+    - docker run -d --name $APP_NAME --label app=$APP_NAME -p $APP_PORT:8080 --restart unless-stopped $IMAGE_TAG
+    - docker image prune -f -a --filter "label=app=$APP_NAME"
+
+deploy_staging:
+  stage: deploy_staging
+  <<: *deploy_template
+  variables:
+    SSH_PRIVATE_KEY: $SSH_PRIVATE_KEY_STAGING
+    SERVER_IP: $STAGING_SERVER_IP
+    SERVER_USER: $STAGING_SERVER_USER
+  environment:
+    name: staging
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"
+
+
