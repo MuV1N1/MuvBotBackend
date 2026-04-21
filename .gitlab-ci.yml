@@ -27,7 +27,7 @@ build:
 .deploy_template: &deploy_template
   image: ubuntu:24.04
   before_script:
-    - 'command -v ssh-agent >/dev/null || ( apk add --no-cache openssh-client )'
+    - 'command -v ssh-agent >/dev/null || ( apt-get update && apt-get install -y openssh-client )'
     - eval $(ssh-agent -s)
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
     - mkdir -p ~/.ssh
@@ -57,9 +57,9 @@ deploy:
   stage: deploy
   <<: *deploy_template
   variables:
-    SSH_PRIVATE_KEY: $SSH_PRIVATE_KEY_STAGING
-    SERVER_IP: $STAGING_SERVER_IP
-    SERVER_USER: $STAGING_SERVER_USER
+    SSH_PRIVATE_KEY: $SSH_PRIVATE_KEY
+    SERVER_IP: $SERVER_IP
+    SERVER_USER: $SERVER_USER
   environment:
     name: staging
   rules:
