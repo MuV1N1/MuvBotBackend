@@ -1,6 +1,6 @@
 stages:
   - build
-  - deploy_staging
+  - deploy
 
 variables:
   DOCKER_DRIVER: overlay2
@@ -25,7 +25,7 @@ build:
     - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"
 
 .deploy_template: &deploy_template
-  image: docker:24.0.5
+  image: ubuntu:24.04
   before_script:
     - 'command -v ssh-agent >/dev/null || ( apk add --no-cache openssh-client )'
     - eval $(ssh-agent -s)
@@ -40,11 +40,21 @@ build:
     - docker pull $IMAGE_TAG
     - docker stop $APP_NAME || true
     - docker rm $APP_NAME || true
-    - docker run -d --name $APP_NAME --label app=$APP_NAME -p $APP_PORT:8080 --restart unless-stopped $IMAGE_TAG
+    - docker run -d --name $APP_NAME --label app=$APP_NAME -p $APP_PORT:8080 --restart unless-stopped \
+        -e DB_URL="$DB_URL" \
+        -e DB_USER="$DB_USER" \
+        -e DB_PASS="$DB_PASS" \
+        -e OPENAI_API_KEY="$OPENAI_API_KEY" \
+        -e DISCORD_BOT_TOKEN="$DISCORD_BOT_TOKEN" \
+        -e DISCORD_CLIENT_ID="$DISCORD_CLIENT_ID" \
+        -e DISCORD_CLIENT_SECRET="$DISCORD_CLIENT_SECRET" \
+        -e DISCORD_REDIRECT_URI="$DISCORD_REDIRECT_URI" \
+        $IMAGE_TAG
     - docker image prune -f -a --filter "label=app=$APP_NAME"
 
-deploy_staging:
-  stage: deploy_staging
+
+deploy:
+  stage: deploy
   <<: *deploy_template
   variables:
     SSH_PRIVATE_KEY: $SSH_PRIVATE_KEY_STAGING
