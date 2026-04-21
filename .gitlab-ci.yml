@@ -8,7 +8,7 @@ variables:
   IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
   IMAGE_TAG_LATEST: $CI_REGISTRY_IMAGE:latest
   APP_NAME: muvbot
-  APP_PORT: 8080
+  APP_PORT: 4322
 
 build:
   stage: build
@@ -25,32 +25,26 @@ build:
     - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"
 
 .deploy_template: &deploy_template
+  stage: deploy
   image: ubuntu:24.04
   before_script:
-    - 'command -v ssh-agent >/dev/null || ( apt-get update && apt-get install -y openssh-client )'
-    - eval $(ssh-agent -s)
-    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    - ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
-    - chmod 644 ~/.ssh/known_hosts
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
-    - export DOCKER_HOST="ssh://$SERVER_USER@$SERVER_IP"
+    - apt-get update && apt-get install -y openssh-client sshpass
   script:
-    - docker pull $IMAGE_TAG
-    - docker stop $APP_NAME || true
-    - docker rm $APP_NAME || true
-    - docker run -d --name $APP_NAME --label app=$APP_NAME -p $APP_PORT:8080 --restart unless-stopped \
-        -e DB_URL="$DB_URL" \
-        -e DB_USER="$DB_USER" \
-        -e DB_PASS="$DB_PASS" \
-        -e OPENAI_API_KEY="$OPENAI_API_KEY" \
-        -e DISCORD_BOT_TOKEN="$DISCORD_BOT_TOKEN" \
-        -e DISCORD_CLIENT_ID="$DISCORD_CLIENT_ID" \
-        -e DISCORD_CLIENT_SECRET="$DISCORD_CLIENT_SECRET" \
-        -e DISCORD_REDIRECT_URI="$DISCORD_REDIRECT_URI" \
-        $IMAGE_TAG
-    - docker image prune -f -a --filter "label=app=$APP_NAME"
+    - mkdir -p ~/.ssh
+    - ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
+    - sshpass -p "$SSH_PASSWORD" ssh $SERVER_USER@$SERVER_IP "docker login -u $DEPLOY_TOKEN_USER -p $DEPLOY_TOKEN_PASSWORD $CI_REGISTRY"
+    - sshpass -p "$SSH_PASSWORD" ssh $SERVER_USER@$SERVER_IP "docker pull $IMAGE_TAG"
+    - sshpass -p "$SSH_PASSWORD" ssh $SERVER_USER@$SERVER_IP "docker rm -f $APP_NAME || true"
+    - sshpass -p "$SSH_PASSWORD" ssh $SERVER_USER@$SERVER_IP "docker run -d --name $APP_NAME -p $APP_PORT:4322 --restart unless-stopped \
+      -e DB_URL=\"$DB_URL\" \
+      -e DB_USER=\"$DB_USER\" \
+      -e DB_PASS=\"$DB_PASS\" \
+      -e OPENAI_API_KEY=\"$OPENAI_API_KEY\" \
+      -e DISCORD_BOT_TOKEN=\"$DISCORD_BOT_TOKEN\" \
+      -e DISCORD_CLIENT_ID=\"$DISCORD_CLIENT_ID\" \
+      -e DISCORD_CLIENT_SECRET=\"$DISCORD_CLIENT_SECRET\" \
+      -e DISCORD_REDIRECT_URI=\"$DISCORD_REDIRECT_URI\" \
+      $IMAGE_TAG"
 
 
 deploy:
