@@ -32,19 +32,13 @@ build:
   script:
     - mkdir -p ~/.ssh
     - ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
-    - sshpass -p "$SSH_PASSWORD" ssh $SERVER_USER@$SERVER_IP "docker login -u $DEPLOY_TOKEN_USER -p $DEPLOY_TOKEN_PASSWORD $CI_REGISTRY"
-    - sshpass -p "$SSH_PASSWORD" ssh $SERVER_USER@$SERVER_IP "docker pull $IMAGE_TAG"
-    - sshpass -p "$SSH_PASSWORD" ssh $SERVER_USER@$SERVER_IP "docker rm -f $APP_NAME || true"
-    - sshpass -p "$SSH_PASSWORD" ssh $SERVER_USER@$SERVER_IP "docker run -d --name $APP_NAME -p $APP_PORT:4322 --restart unless-stopped \
-      -e DB_URL=\"$DB_URL\" \
-      -e DB_USER=\"$DB_USER\" \
-      -e DB_PASS=\"$DB_PASS\" \
-      -e OPENAI_API_KEY=\"$OPENAI_API_KEY\" \
-      -e DISCORD_BOT_TOKEN=\"$DISCORD_BOT_TOKEN\" \
-      -e DISCORD_CLIENT_ID=\"$DISCORD_CLIENT_ID\" \
-      -e DISCORD_CLIENT_SECRET=\"$DISCORD_CLIENT_SECRET\" \
-      -e DISCORD_REDIRECT_URI=\"$DISCORD_REDIRECT_URI\" \
-      $IMAGE_TAG"
+    - |
+      sshpass -p "$SSH_PASSWORD" ssh $SERVER_USER@$SERVER_IP << 'EOF'
+      echo "$DEPLOY_TOKEN_PASSWORD" | docker login -u "$DEPLOY_TOKEN_USER" --password-stdin "$CI_REGISTRY"
+      docker pull "$CI_REGISTRY_IMAGE/prod:$CI_COMMIT_SHORT_SHA"
+      docker rm -f michael-homepage-prod || true
+      docker run -d --name michael-homepage-prod -p 8080:80 --restart unless-stopped "$CI_REGISTRY_IMAGE/prod:$CI_COMMIT_SHORT_SHA"
+      EOF
 
 
 deploy:
