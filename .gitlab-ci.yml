@@ -19,16 +19,16 @@ build:
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
   script:
     - docker build
-      --build-arg OPENAI_API_KEY="$OPENAI_API_KEY"
-      --build-arg DB_URL="$DB_URL"
-      --build-arg DB_USER="$DB_USER"
-      --build-arg DB_PASS="$DB_PASS"
-      --build-arg DISCORD_BOT_TOKEN="$DISCORD_BOT_TOKEN"
-      --build-arg DISCORD_CLIENT_ID="$DISCORD_CLIENT_ID"
-      --build-arg DISCORD_CLIENT_SECRET="$DISCORD_CLIENT_SECRET"
-      --build-arg DISCORD_REDIRECT_URI="$DISCORD_REDIRECT_URI"
-      -t $IMAGE_TAG
-      -t $IMAGE_TAG_LATEST .
+        --build-arg OPENAI_API_KEY="$OPENAI_API_KEY"
+        --build-arg DB_URL="$DB_URL"
+        --build-arg DB_USER="$DB_USER"
+        --build-arg DB_PASS="$DB_PASS"
+        --build-arg DISCORD_BOT_TOKEN="$DISCORD_BOT_TOKEN"
+        --build-arg DISCORD_CLIENT_ID="$DISCORD_CLIENT_ID"
+        --build-arg DISCORD_CLIENT_SECRET="$DISCORD_CLIENT_SECRET"
+        --build-arg DISCORD_REDIRECT_URI="$DISCORD_REDIRECT_URI"
+        -t $IMAGE_TAG
+        -t $IMAGE_TAG_LATEST .
     - docker push $IMAGE_TAG
     - docker push $IMAGE_TAG_LATEST
   rules:
@@ -44,7 +44,7 @@ build:
   script:
     - >
       sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP
-      "echo '$DEPLOY_TOKEN_PASSWORD' | docker login -u '$DEPLOY_TOKEN_USER' --password-stdin '$CI_REGISTRY'"
+      "echo \"$DEPLOY_TOKEN_PASSWORD\" | docker login -u \"$DEPLOY_TOKEN_USER\" --password-stdin \"$CI_REGISTRY\""
     - >
       sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP
       "docker pull $IMAGE_TAG"
@@ -54,14 +54,14 @@ build:
     - >
       sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP
       "docker run -d --name $APP_NAME -p $APP_PORT:4322 --restart unless-stopped
-      -e DB_URL='$DB_URL'
-      -e DB_USER='$DB_USER'
-      -e DB_PASS='$DB_PASS'
-      -e OPENAI_API_KEY='$OPENAI_API_KEY'
-      -e DISCORD_BOT_TOKEN='$DISCORD_BOT_TOKEN'
-      -e DISCORD_CLIENT_ID='$DISCORD_CLIENT_ID'
-      -e DISCORD_CLIENT_SECRET='$DISCORD_CLIENT_SECRET'
-      -e DISCORD_REDIRECT_URI='$DISCORD_REDIRECT_URI'
+      -e DB_URL=\"$DB_URL\"
+      -e DB_USER=\"$DB_USER\"
+      -e DB_PASS=\"$DB_PASS\"
+      -e OPENAI_API_KEY=\"$OPENAI_API_KEY\"
+      -e DISCORD_BOT_TOKEN=\"$DISCORD_BOT_TOKEN\"
+      -e DISCORD_CLIENT_ID=\"$DISCORD_CLIENT_ID\"
+      -e DISCORD_CLIENT_SECRET=\"$DISCORD_CLIENT_SECRET\"
+      -e DISCORD_REDIRECT_URI=\"$DISCORD_REDIRECT_URI\"
       $IMAGE_TAG"
 
 deploy:
