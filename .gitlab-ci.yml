@@ -54,8 +54,6 @@ deploy:
     SSH_PRIVATE_KEY: $SSH_PRIVATE_KEY
     SERVER_IP: 45.81.232.242
     SERVER_USER: root
-  environment:
-    name: staging
   rules:
     - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"
 
