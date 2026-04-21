@@ -1,66 +1,74 @@
 stages:
   - build
-  - docker
   - deploy
 
 variables:
   DOCKER_DRIVER: overlay2
-  DOCKER_TLS_CERTDIR: "/certs"
+  DOCKER_TLS_CERTDIR: ""
   IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
   IMAGE_TAG_LATEST: $CI_REGISTRY_IMAGE:latest
   APP_NAME: muvbot
   APP_PORT: 4322
 
 build:
-  image: node:20
   stage: build
-  script:
-    - npm install
-    - npm run build
-  artifacts:
-    paths:
-      - html/
-
-.docker_login: &docker_login
   image: docker:24.0.5
   services:
     - docker:24.0.5-dind
   before_script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
-
-docker-build:
-  stage: docker
-  <<: *docker_login
   script:
     - docker build
-        -t $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
-        -t $CI_REGISTRY_IMAGE:latest
-        -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
-        ./maintenance-page
-    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
-    - docker push $CI_REGISTRY_IMAGE:latest
-    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+      --build-arg OPENAI_API_KEY="$OPENAI_API_KEY"
+      --build-arg DB_URL="$DB_URL"
+      --build-arg DB_USER="$DB_USER"
+      --build-arg DB_PASS="$DB_PASS"
+      --build-arg DISCORD_BOT_TOKEN="$DISCORD_BOT_TOKEN"
+      --build-arg DISCORD_CLIENT_ID="$DISCORD_CLIENT_ID"
+      --build-arg DISCORD_CLIENT_SECRET="$DISCORD_CLIENT_SECRET"
+      --build-arg DISCORD_REDIRECT_URI="$DISCORD_REDIRECT_URI"
+      -t $IMAGE_TAG
+      -t $IMAGE_TAG_LATEST .
+    - docker push $IMAGE_TAG
+    - docker push $IMAGE_TAG_LATEST
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"
 
-.deploy_base: &deploy_base
+.deploy_template: &deploy_template
   stage: deploy
   image: ubuntu:24.04
   before_script:
     - apt-get update && apt-get install -y openssh-client sshpass
-  variables:
-    SERVER_IP: 45.81.232.242
-    SERVER_USER: root
+    - mkdir -p ~/.ssh
+    - ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
+  script:
+    - >
+      sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP
+      "echo '$DEPLOY_TOKEN_PASSWORD' | docker login -u '$DEPLOY_TOKEN_USER' --password-stdin '$CI_REGISTRY'"
+    - >
+      sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP
+      "docker pull $IMAGE_TAG"
+    - >
+      sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP
+      "docker rm -f $APP_NAME || true"
+    - >
+      sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP
+      "docker run -d --name $APP_NAME -p $APP_PORT:4322 --restart unless-stopped
+      -e DB_URL='$DB_URL'
+      -e DB_USER='$DB_USER'
+      -e DB_PASS='$DB_PASS'
+      -e OPENAI_API_KEY='$OPENAI_API_KEY'
+      -e DISCORD_BOT_TOKEN='$DISCORD_BOT_TOKEN'
+      -e DISCORD_CLIENT_ID='$DISCORD_CLIENT_ID'
+      -e DISCORD_CLIENT_SECRET='$DISCORD_CLIENT_SECRET'
+      -e DISCORD_REDIRECT_URI='$DISCORD_REDIRECT_URI'
+      $IMAGE_TAG"
 
 deploy:
   stage: deploy
-  <<: *deploy_base
-  script:
-    - mkdir -p ~/.ssh
-    - ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
-    - sshpass -p "$SSH_PASSWORD" ssh $SERVER_USER@$SERVER_IP
-        "echo '$DEPLOY_TOKEN_PASSWORD' | docker login -u '$DEPLOY_TOKEN_USER' --password-stdin '$CI_REGISTRY'"
-    - sshpass -p "$SSH_PASSWORD" ssh $SERVER_USER@$SERVER_IP
-        "docker pull $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
-    - sshpass -p "$SSH_PASSWORD" ssh $SERVER_USER@$SERVER_IP
-        "docker rm -f michael-homepage || true"
-    - sshpass -p "$SSH_PASSWORD" ssh $SERVER_USER@$SERVER_IP
-        "docker run -d --name michael-homepage -p 8081:80 --restart unless-stopped $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+  <<: *deploy_template
+  variables:
+    SERVER_IP: 45.81.232.242
+    SERVER_USER: root
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"
