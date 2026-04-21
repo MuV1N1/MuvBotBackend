@@ -52,8 +52,8 @@ deploy:
   <<: *deploy_template
   variables:
     SSH_PRIVATE_KEY: $SSH_PRIVATE_KEY
-    SERVER_IP: $SERVER_IP
-    SERVER_USER: $SERVER_USER
+    SERVER_IP: 45.81.232.242
+    SERVER_USER: root
   environment:
     name: staging
   rules:
