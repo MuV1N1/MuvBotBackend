@@ -21,7 +21,7 @@ configurations {
 }
 
 ext {
-    set('springAiVersion', "1.1.4")
+    set('springAiVersion', "1.1.5")
 }
 
 dependencies {
