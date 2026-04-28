@@ -49,9 +49,9 @@ build:
 # ─────────────────────────────────────────────────────────────────────────────
 docker-build:
   stage: docker
-  image: docker:26
+  image: docker:29
   services:
-    - docker:26-dind
+    - docker:29-dind
   <<: *docker_login
   <<: *only_main
   script:
