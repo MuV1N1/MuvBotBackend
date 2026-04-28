@@ -82,36 +82,36 @@ deploy:
     - ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts
   script:
     - |
-      ssh "$SERVER_USER@$SERVER_IP" bash -s << 'REMOTE'
+      ssh "$SERVER_USER@$SERVER_IP" /bin/bash << REMOTE
         set -e
 
         # Log in to GitLab registry on the server
-        echo "${CI_REGISTRY_PASSWORD}" | docker login -u "${CI_REGISTRY_USER}" \
-          --password-stdin "${CI_REGISTRY}" 2>/dev/null || true
+        echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" \
+          --password-stdin "$CI_REGISTRY" 2>/dev/null || true
 
         # Pull the new image
-        docker pull "${IMAGE_TAG}"
+        docker pull "$IMAGE_TAG"
 
         # Stop & remove the old container (ignore errors if it doesn't exist)
-        docker stop "${APP_NAME}" 2>/dev/null || true
-        docker rm   "${APP_NAME}" 2>/dev/null || true
+        docker stop "$APP_NAME" 2>/dev/null || true
+        docker rm   "$APP_NAME"  2>/dev/null || true
 
         # Start the new container
         docker run -d \
-          --name "${APP_NAME}" \
+          --name "$APP_NAME" \
           --restart unless-stopped \
-          -p "${APP_PORT}:${APP_PORT}" \
-          -e OPENAI_API_KEY="${OPENAI_API_KEY}" \
-          -e DB_URL="${DB_URL}" \
-          -e DB_USER="${DB_USER}" \
-          -e DB_PASS="${DB_PASS}" \
-          -e DISCORD_BOT_TOKEN="${DISCORD_BOT_TOKEN}" \
-          -e DISCORD_CLIENT_ID="${DISCORD_CLIENT_ID}" \
-          -e DISCORD_CLIENT_SECRET="${DISCORD_CLIENT_SECRET}" \
-          -e DISCORD_REDIRECT_URI="${DISCORD_REDIRECT_URI}" \
-          "${IMAGE_TAG}"
+          -p "$APP_PORT:$APP_PORT" \
+          -e OPENAI_API_KEY="$OPENAI_API_KEY" \
+          -e DB_URL="$DB_URL" \
+          -e DB_USER="$DB_USER" \
+          -e DB_PASS="$DB_PASS" \
+          -e DISCORD_BOT_TOKEN="$DISCORD_BOT_TOKEN" \
+          -e DISCORD_CLIENT_ID="$DISCORD_CLIENT_ID" \
+          -e DISCORD_CLIENT_SECRET="$DISCORD_CLIENT_SECRET" \
+          -e DISCORD_REDIRECT_URI="$DISCORD_REDIRECT_URI" \
+          "$IMAGE_TAG"
 
-        echo "✅ Deployed ${APP_NAME} (${IMAGE_TAG})"
+        echo "Deployed $APP_NAME ($IMAGE_TAG)"
       REMOTE
   environment:
     name: production
@@ -135,8 +135,8 @@ cleanup:
     - ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts
   script:
     - |
-      ssh "$SERVER_USER@$SERVER_IP" bash -s << 'REMOTE'
-        echo "🧹 Pruning unused Docker images..."
+      ssh "$SERVER_USER@$SERVER_IP" /bin/bash << REMOTE
+        echo "Pruning unused Docker images..."
         docker image prune -f
-        echo "✅ Cleanup done"
+        echo "Cleanup done"
       REMOTE
