@@ -97,6 +97,7 @@ deploy:
         # ── Start new container (no auto-restart until health confirmed) ──────
         docker run -d \
           --name "$APP_NAME" \
+          --network mynet \
           --restart no \
           -p "$APP_PORT:$APP_PORT" \
           -e OPENAI_API_KEY="$OPENAI_API_KEY" \
