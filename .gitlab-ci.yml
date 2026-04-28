@@ -70,7 +70,7 @@ docker-build:
 # ─────────────────────────────────────────────────────────────────────────────
 deploy:
   stage: deploy
-  image: alpine:3.19
+  image: alpine:3.23
   <<: *only_main
   before_script:
     # Install SSH client
@@ -147,7 +147,7 @@ deploy:
 # ─────────────────────────────────────────────────────────────────────────────
 cleanup:
   stage: cleanup
-  image: alpine:3.19
+  image: alpine:3.23
   <<: *only_main
   when: always          # run regardless of deploy success/failure
   before_script:
