@@ -85,21 +85,19 @@ deploy:
       ssh "$SERVER_USER@$SERVER_IP" /bin/bash << REMOTE
         set -e
 
-        # Log in to GitLab registry on the server
+        # ── Login & pull new image ────────────────────────────────────────────
         echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" \
           --password-stdin "$CI_REGISTRY" 2>/dev/null || true
-
-        # Pull the new image
         docker pull "$IMAGE_TAG"
 
-        # Stop & remove the old container (ignore errors if it doesn't exist)
+        # ── Stop & remove old container ───────────────────────────────────────
         docker stop "$APP_NAME" 2>/dev/null || true
         docker rm   "$APP_NAME"  2>/dev/null || true
 
-        # Start the new container
+        # ── Start new container (no auto-restart until health confirmed) ──────
         docker run -d \
           --name "$APP_NAME" \
-          --restart unless-stopped \
+          --restart no \
           -p "$APP_PORT:$APP_PORT" \
           -e OPENAI_API_KEY="$OPENAI_API_KEY" \
           -e DB_URL="$DB_URL" \
@@ -111,7 +109,31 @@ deploy:
           -e DISCORD_REDIRECT_URI="$DISCORD_REDIRECT_URI" \
           "$IMAGE_TAG"
 
-        echo "Deployed $APP_NAME ($IMAGE_TAG)"
+        # ── Health check (60s / 12 × 5s) ─────────────────────────────────────
+        echo "Health check starting (max 60s)..."
+        HEALTHY=false
+        for i in \$(seq 1 12); do
+          sleep 5
+          HTTP=\$(curl -s -o /dev/null -w "%{http_code}" \
+            "http://localhost:$APP_PORT/" 2>/dev/null || echo "000")
+          echo "  Attempt \$i/12 — HTTP \$HTTP"
+          if [ "\$HTTP" != "000" ] && [ "\$HTTP" != "502" ] && [ "\$HTTP" != "503" ]; then
+            HEALTHY=true
+            break
+          fi
+        done
+
+        # ── Fail hard if unhealthy ────────────────────────────────────────────
+        if [ "\$HEALTHY" = "false" ]; then
+          echo "Health check FAILED — stopping broken container."
+          docker stop "$APP_NAME" 2>/dev/null || true
+          docker rm   "$APP_NAME"  2>/dev/null || true
+          exit 1
+        fi
+
+        # ── Healthy: enable restart policy now ────────────────────────────────
+        docker update --restart unless-stopped "$APP_NAME"
+        echo "Health check passed! $APP_NAME is running on port $APP_PORT"
       REMOTE
   environment:
     name: production
