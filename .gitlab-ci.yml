@@ -10,7 +10,7 @@ variables:
   IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
   IMAGE_TAG_LATEST: $CI_REGISTRY_IMAGE:latest
   APP_NAME: muvbot
-  APP_PORT: "4322"
+  APP_PORT: "8080"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # REUSABLE ANCHORS
