@@ -64,8 +64,8 @@ docker-build:
   <<: *docker_login
   <<: *only_main
   script:
-    # BuildKit-Builder anlegen (einmalig, ignoriert Fehler wenn schon vorhanden)
-    - docker buildx create --name ci-builder --use || docker buildx use ci-builder
+    - docker context create myctx
+    - docker buildx create --name ci-builder --driver docker-container --use myctx
     - docker buildx inspect --bootstrap
     - |
       docker buildx build \
