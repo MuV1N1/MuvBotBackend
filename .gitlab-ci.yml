@@ -118,6 +118,8 @@ deploy:
           --prune \
           $STACK_NAME
 
+        docker service update --force --image "$IMAGE_TAG" ${STACK_NAME}_muvbot
+
         # ── Warten bis der Service healthy ist (max. 90s) ────────────────────
         echo "Warte auf gesunden Service..."
         TIMEOUT=90
