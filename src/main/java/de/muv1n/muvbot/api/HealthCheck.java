@@ -5,10 +5,10 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/healthcheck")
-public class HealthCheckController {
+public class HealthCheck {
 
     @GetMapping
-    public ResponseEntity<Void> healthCheck() { 
+    public ResponseEntity<Void> healthCheck() {
         return ResponseEntity.ok().build();
     }
 }
