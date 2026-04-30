@@ -11,6 +11,7 @@ variables:
   IMAGE_TAG_LATEST: $CI_REGISTRY_IMAGE:latest
   APP_NAME: muvbot
   APP_PORT: "8080"
+  STACK_NAME: muvbot               # Name des Swarm-Stacks
 
 # ─────────────────────────────────────────────────────────────────────────────
 # REUSABLE ANCHORS
@@ -25,9 +26,17 @@ variables:
   before_script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
 
+.ssh_setup: &ssh_setup
+  before_script:
+    - apk add --no-cache openssh-client
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
+    - ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts
+
 # ─────────────────────────────────────────────────────────────────────────────
 # STAGE: build
-# Compiles the Spring Boot project and produces the fat JAR as a CI artifact.
+# Kompiliert das Spring Boot Projekt und erzeugt den Fat-JAR als CI-Artifact.
 # ─────────────────────────────────────────────────────────────────────────────
 build:
   stage: build
@@ -44,8 +53,8 @@ build:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # STAGE: docker
-# Builds the Docker image (using the Dockerfile in the repo root) and pushes
-# both a SHA-tagged and a :latest tag to the GitLab Container Registry.
+# Baut das Image mit docker buildx (BuildKit) und pusht beide Tags ins Registry.
+# buildx sorgt für besseres Layer-Caching und Multi-Plattform-Support.
 # ─────────────────────────────────────────────────────────────────────────────
 docker-build:
   stage: docker
@@ -55,86 +64,86 @@ docker-build:
   <<: *docker_login
   <<: *only_main
   script:
+    # BuildKit-Builder anlegen (einmalig, ignoriert Fehler wenn schon vorhanden)
+    - docker buildx create --name ci-builder --use || docker buildx use ci-builder
+    - docker buildx inspect --bootstrap
     - |
-      docker build \
-        -t "$IMAGE_TAG" \
-        -t "$IMAGE_TAG_LATEST" \
+      docker buildx build \
+        --platform linux/amd64 \
+        --cache-from type=registry,ref="$IMAGE_TAG_LATEST" \
+        --cache-to   type=inline \
+        --tag "$IMAGE_TAG" \
+        --tag "$IMAGE_TAG_LATEST" \
+        --push \
         .
-    - docker push "$IMAGE_TAG"
-    - docker push "$IMAGE_TAG_LATEST"
+    # buildx mit --push pusht direkt, kein separater docker push nötig
 
 # ─────────────────────────────────────────────────────────────────────────────
 # STAGE: deploy
-# SSH into the production server, pull the new image and (re)start the
-# container.  All secrets come from GitLab CI/CD Variables (Settings → CI/CD).
+# SSHt in den Produktionsserver, kopiert die Stack-Datei und führt
+# "docker stack deploy" aus. Swarm kümmert sich um Rolling Updates &
+# automatischen Rollback bei Fehlern (→ docker-stack.yml).
 # ─────────────────────────────────────────────────────────────────────────────
 deploy:
   stage: deploy
   image: alpine:3.19
   <<: *only_main
-  before_script:
-    # Install SSH client
-    - apk add --no-cache openssh-client
-    # Set up SSH key from CI variable (add SSH_PRIVATE_KEY in GitLab CI/CD vars)
-    - eval $(ssh-agent -s)
-    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
-    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
-    - ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts
+  <<: *ssh_setup
   script:
+    # Stack-Datei auf den Server kopieren
+    - scp docker-stack.yml "$SERVER_USER@$SERVER_IP:/opt/$STACK_NAME/docker-stack.yml"
     - |
-      ssh "$SERVER_USER@$SERVER_IP" /bin/bash << REMOTE
+      ssh "$SERVER_USER@$SERVER_IP" /bin/bash <<REMOTE
         set -e
 
-        # ── Login & pull new image ────────────────────────────────────────────
+        # ── Login & Image vorab pullen (spart Downtime beim Deploy) ──────────
         echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" \
           --password-stdin "$CI_REGISTRY" 2>/dev/null || true
         docker pull "$IMAGE_TAG"
 
-        # ── Stop & remove old container ───────────────────────────────────────
-        docker stop "$APP_NAME" 2>/dev/null || true
-        docker rm   "$APP_NAME"  2>/dev/null || true
+        # ── Stack deployen (oder updaten wenn bereits vorhanden) ─────────────
+        export IMAGE_TAG="$IMAGE_TAG"
+        export OPENAI_API_KEY="$OPENAI_API_KEY"
+        export DB_URL="$DB_URL"
+        export DB_USER="$DB_USER"
+        export DB_PASS="$DB_PASS"
+        export DISCORD_BOT_TOKEN="$DISCORD_BOT_TOKEN"
+        export DISCORD_CLIENT_ID="$DISCORD_CLIENT_ID"
+        export DISCORD_CLIENT_SECRET="$DISCORD_CLIENT_SECRET"
+        export DISCORD_REDIRECT_URI="$DISCORD_REDIRECT_URI"
 
-        # ── Start new container (no auto-restart until health confirmed) ──────
-        docker run -d \
-          --name "$APP_NAME" \
-          --network mynet \
-          --restart no \
-          -p "$APP_PORT:$APP_PORT" \
-          -e OPENAI_API_KEY="$OPENAI_API_KEY" \
-          -e DB_URL="$DB_URL" \
-          -e DB_USER="$DB_USER" \
-          -e DB_PASS="$DB_PASS" \
-          -e DISCORD_BOT_TOKEN="$DISCORD_BOT_TOKEN" \
-          -e DISCORD_CLIENT_ID="$DISCORD_CLIENT_ID" \
-          -e DISCORD_CLIENT_SECRET="$DISCORD_CLIENT_SECRET" \
-          -e DISCORD_REDIRECT_URI="$DISCORD_REDIRECT_URI" \
-          "$IMAGE_TAG"
+        docker stack deploy \
+          --compose-file /opt/$STACK_NAME/docker-stack.yml \
+          --with-registry-auth \
+          --prune \
+          $STACK_NAME
 
-        # ── Health check (60s / 12 × 5s) ─────────────────────────────────────
-        echo "Health check starting (max 60s)..."
-        HEALTHY=false
-        for i in \$(seq 1 12); do
-          sleep 5
-          HTTP=\$(curl -s -o /dev/null -w "%{http_code}" \
-            "http://localhost:$APP_PORT/" 2>/dev/null || echo "000")
-          echo "  Attempt \$i/12 — HTTP \$HTTP"
-          if [ "\$HTTP" != "000" ] && [ "\$HTTP" != "502" ] && [ "\$HTTP" != "503" ]; then
-            HEALTHY=true
+        # ── Warten bis der Service healthy ist (max. 90s) ────────────────────
+        echo "Warte auf gesunden Service..."
+        TIMEOUT=90
+        ELAPSED=0
+        while [ \$ELAPSED -lt \$TIMEOUT ]; do
+          RUNNING=\$(docker service ls --filter name=${STACK_NAME}_muvbot \
+            --format "{{.Replicas}}" 2>/dev/null || echo "0/0")
+          echo "  [\${ELAPSED}s] Replicas: \$RUNNING"
+          # Prüfen ob gewünschte == laufende Replicas (z.B. "1/1")
+          WANT=\$(echo \$RUNNING | cut -d'/' -f2)
+          HAVE=\$(echo \$RUNNING | cut -d'/' -f1)
+          if [ "\$WANT" -gt 0 ] && [ "\$HAVE" = "\$WANT" ]; then
+            echo "Service ist healthy! (\$RUNNING)"
             break
           fi
+          sleep 10
+          ELAPSED=\$((ELAPSED + 10))
         done
 
-        # ── Fail hard if unhealthy ────────────────────────────────────────────
-        if [ "\$HEALTHY" = "false" ]; then
-          echo "Health check FAILED — stopping broken container."
-          docker stop "$APP_NAME" 2>/dev/null || true
-          docker rm   "$APP_NAME"  2>/dev/null || true
+        if [ "\$HAVE" != "\$WANT" ] || [ "\$WANT" = "0" ]; then
+          echo "FEHLER: Service nicht healthy nach \${TIMEOUT}s. Rollback läuft..."
+          docker service rollback ${STACK_NAME}_muvbot || true
           exit 1
         fi
 
-        # ── Healthy: enable restart policy now ────────────────────────────────
-        docker update --restart unless-stopped "$APP_NAME"
-        echo "Health check passed! $APP_NAME is running on port $APP_PORT"
+        echo "Deploy erfolgreich! Stack: $STACK_NAME"
       REMOTE
   environment:
     name: production
@@ -142,24 +151,19 @@ deploy:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # STAGE: cleanup
-# Remove dangling / old images from the server to keep disk usage in check.
-# Runs even if deploy fails (so stale layers don't pile up).
+# Entfernt ungenutzter Images vom Server (dangling layers etc.).
+# Läuft immer, auch wenn deploy fehlschlägt.
 # ─────────────────────────────────────────────────────────────────────────────
 cleanup:
   stage: cleanup
   image: alpine:3.19
   <<: *only_main
-  when: always          # run regardless of deploy success/failure
-  before_script:
-    - apk add --no-cache openssh-client
-    - eval $(ssh-agent -s)
-    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
-    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
-    - ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts
+  when: always
+  <<: *ssh_setup
   script:
     - |
-      ssh "$SERVER_USER@$SERVER_IP" /bin/bash << REMOTE
-        echo "Pruning unused Docker images..."
+      ssh "$SERVER_USER@$SERVER_IP" /bin/bash <<REMOTE
+        echo "Bereinige ungenutzte Docker Images..."
         docker image prune -f
-        echo "Cleanup done"
+        echo "Cleanup abgeschlossen."
       REMOTE
