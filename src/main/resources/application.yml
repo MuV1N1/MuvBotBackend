@@ -26,6 +26,9 @@ spring:
     init:
       mode: always
 
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4321}
+
 discord:
   bot:
     token: ${DISCORD_BOT_TOKEN}
