@@ -95,7 +95,7 @@ docker-build:
 # ─────────────────────────────────────────────────────────────────────────────
 deploy:
   stage: deploy
-  image: alpine:3.19
+  image: alpine:3.23
   <<: *only_main
   <<: *ssh_setup
   script:
@@ -172,7 +172,7 @@ deploy:
 # ─────────────────────────────────────────────────────────────────────────────
 cleanup:
   stage: cleanup
-  image: alpine:3.19
+  image: alpine:3.23
   <<: *only_main
   when: always
   <<: *ssh_setup
