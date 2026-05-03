@@ -51,7 +51,7 @@ build:
       - build/libs/*.jar
     expire_in: 1 hour
   rules:
-    - if: $CI_COMMIT_BRANCH != "master"
+    - if: $CI_COMMIT_BRANCH != "main"
       when: manual
     - if: $CI_COMMIT_BRANCH == "main"
       when: always
@@ -81,7 +81,7 @@ docker-build:
         --push \
         .
   rules:
-    - if: $CI_COMMIT_BRANCH != "master"
+    - if: $CI_COMMIT_BRANCH != "main"
       when: manual
     - if: $CI_COMMIT_BRANCH == "main"
       when: always
@@ -160,7 +160,7 @@ deploy:
     name: production
     url: http://$SERVER_IP:$APP_PORT
   rules:
-    - if: $CI_COMMIT_BRANCH != "master"
+    - if: $CI_COMMIT_BRANCH != "main"
       when: manual
     - if: $CI_COMMIT_BRANCH == "main"
       when: always
@@ -184,7 +184,7 @@ cleanup:
         echo "Cleanup abgeschlossen."
       REMOTE
   rules:
-    - if: $CI_COMMIT_BRANCH != "master"
+    - if: $CI_COMMIT_BRANCH != "main"
       when: manual
     - if: $CI_COMMIT_BRANCH == "main"
       when: always
