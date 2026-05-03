@@ -40,7 +40,7 @@ variables:
 # ─────────────────────────────────────────────────────────────────────────────
 build:
   stage: build
-  image: eclipse-temurin:17-jdk-alpine
+  image: eclipse-temurin:17.0.18_8-jdk-alpine
   <<: *only_main
   script:
     - chmod +x gradlew
