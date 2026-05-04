@@ -2,6 +2,8 @@ package de.muv1n.muvbot.service;
 
 import de.muv1n.muvbot.entity.User;
 import de.muv1n.muvbot.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -17,6 +19,8 @@ import java.util.Map;
 
 @Service
 public class AuthService {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
 
     @Value("${discord.bot.token}")
     private String botToken;
@@ -62,6 +66,8 @@ public class AuthService {
             String accessToken = (String) body.get("access_token");
             String refreshToken = (String) body.get("refresh_token");
             Integer expiresIn = (Integer) body.get("expires_in");
+
+            logger.info("Access Token: " + accessToken);
 
             String userUrl = "https://discord.com/api/users/@me";
             HttpHeaders userHeaders = new HttpHeaders();

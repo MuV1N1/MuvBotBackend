@@ -181,7 +181,7 @@ cleanup:
     - |
       ssh "$SERVER_USER@$SERVER_IP" /bin/bash <<REMOTE
         echo "Bereinige ungenutzte Docker Images..."
-        docker image prune -f
+        docker image prune -af
         echo "Cleanup abgeschlossen."
       REMOTE
   rules:
