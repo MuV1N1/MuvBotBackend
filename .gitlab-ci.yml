@@ -96,64 +96,40 @@ docker-build:
 deploy:
   stage: deploy
   image: alpine:3.23
+  retry:
+    max: 1
+    exit_codes: 1
   <<: *only_main
   <<: *ssh_setup
   script:
-    # Stack-Datei auf den Server kopieren
+    - ssh "$SERVER_USER@$SERVER_IP" "mkdir -p /opt/$STACK_NAME"
     - scp docker-stack.yml "$SERVER_USER@$SERVER_IP:/opt/$STACK_NAME/docker-stack.yml"
     - |
-      ssh "$SERVER_USER@$SERVER_IP" /bin/bash <<REMOTE
+      ssh "$SERVER_USER@$SERVER_IP" /bin/bash << REMOTE
         set -e
 
-        # ── Login & Image vorab pullen (spart Downtime beim Deploy) ──────────
         echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" \
           --password-stdin "$CI_REGISTRY" 2>/dev/null || true
-        docker pull "$IMAGE_TAG"
 
-        # ── Stack deployen (oder updaten wenn bereits vorhanden) ─────────────
-        export IMAGE_TAG="$IMAGE_TAG"
-        export OPENAI_API_KEY="$OPENAI_API_KEY"
-        export DB_URL="$DB_URL"
-        export DB_USER="$DB_USER"
-        export DB_PASS="$DB_PASS"
-        export DISCORD_BOT_TOKEN="$DISCORD_BOT_TOKEN"
-        export DISCORD_CLIENT_ID="$DISCORD_CLIENT_ID"
-        export DISCORD_CLIENT_SECRET="$DISCORD_CLIENT_SECRET"
-        export DISCORD_REDIRECT_URI="$DISCORD_REDIRECT_URI"
-        export CORS_ALLOWED_ORIGINS="$CORS_ALLOWED_ORIGINS"
+        IMAGE_TAG="$IMAGE_TAG" \
+        OPENAI_API_KEY="$OPENAI_API_KEY" \
+        DB_URL="$DB_URL" \
+        DB_USER="$DB_USER" \
+        DB_PASS="$DB_PASS" \
+        DISCORD_BOT_TOKEN="$DISCORD_BOT_TOKEN" \
+        DISCORD_CLIENT_ID="$DISCORD_CLIENT_ID" \
+        DISCORD_CLIENT_SECRET="$DISCORD_CLIENT_SECRET" \
+        DISCORD_REDIRECT_URI="$DISCORD_REDIRECT_URI" \
+        CORS_ALLOWED_ORIGINS="$CORS_ALLOWED_ORIGINS" \
+          docker stack deploy \
+            -c /opt/$STACK_NAME/docker-stack.yml \
+            $STACK_NAME \
+            --with-registry-auth \
+            --prune
 
-        docker stack deploy \
-          --compose-file /opt/$STACK_NAME/docker-stack.yml \
-          --with-registry-auth \
-          --prune \
-          $STACK_NAME
+        docker service update --force ${STACK_NAME}_muvbot
 
-        docker service update --force --image "$IMAGE_TAG" ${STACK_NAME}_muvbot
-
-        # ── Warten bis der Service healthy ist (max. 90s) ────────────────────
-        echo "Warte auf gesunden Service..."
-        TIMEOUT=90
-        ELAPSED=0
-        while [ \$ELAPSED -lt \$TIMEOUT ]; do
-          RUNNING=\$(docker service ls --filter name=${STACK_NAME}_muvbot \
-            --format "{{.Replicas}}" 2>/dev/null || echo "0/0")
-          echo "  [\${ELAPSED}s] Replicas: \$RUNNING"
-          # Prüfen ob gewünschte == laufende Replicas (z.B. "1/1")
-          WANT=\$(echo \$RUNNING | cut -d'/' -f2)
-          HAVE=\$(echo \$RUNNING | cut -d'/' -f1)
-          if [ "\$WANT" -gt 0 ] && [ "\$HAVE" = "\$WANT" ]; then
-            echo "Service ist healthy! (\$RUNNING)"
-            break
-          fi
-          sleep 10
-          ELAPSED=\$((ELAPSED + 10))
-        done
-
-        if [ "\$HAVE" != "\$WANT" ] || [ "\$WANT" = "0" ]; then
-          echo "FEHLER: Service nicht healthy nach \${TIMEOUT}s. Rollback läuft..."
-          docker service rollback ${STACK_NAME}_muvbot || true
-          exit 1
-        fi
+        docker service ls --filter "name=$STACK_NAME"
 
         echo "Deploy erfolgreich! Stack: $STACK_NAME"
       REMOTE
