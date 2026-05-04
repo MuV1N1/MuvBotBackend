@@ -120,6 +120,7 @@ deploy:
         export DISCORD_CLIENT_ID="$DISCORD_CLIENT_ID"
         export DISCORD_CLIENT_SECRET="$DISCORD_CLIENT_SECRET"
         export DISCORD_REDIRECT_URI="$DISCORD_REDIRECT_URI"
+        export CORS_ALLOWED_ORIGINS="$CORS_ALLOWED_ORIGINS"
 
         docker stack deploy \
           --compose-file /opt/$STACK_NAME/docker-stack.yml \

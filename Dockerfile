@@ -29,7 +29,8 @@ ENV OPENAI_API_KEY="" \
     DISCORD_BOT_TOKEN="" \
     DISCORD_CLIENT_ID="" \
     DISCORD_CLIENT_SECRET="" \
-    DISCORD_REDIRECT_URI=""
+    DISCORD_REDIRECT_URI="" \
+    CORS_ALLOWED_ORIGINS=""
 
 COPY --from=builder /app/build/libs/*.jar app.jar
 
