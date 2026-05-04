@@ -67,7 +67,7 @@ public class AuthService {
             String refreshToken = (String) body.get("refresh_token");
             Integer expiresIn = (Integer) body.get("expires_in");
 
-            logger.info("Access Token: " + accessToken);
+            logger.debug("Access Token: {}", accessToken);
 
             String userUrl = "https://discord.com/api/users/@me";
             HttpHeaders userHeaders = new HttpHeaders();
