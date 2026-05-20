@@ -34,6 +34,6 @@ ENV OPENAI_API_KEY="" \
 
 COPY --from=builder /app/build/libs/*.jar app.jar
 
-EXPOSE 4322
+EXPOSE 8080
 
 ENTRYPOINT ["java", "-jar", "app.jar"]
