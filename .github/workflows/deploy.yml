@@ -17,17 +17,22 @@ jobs:
       packages: write
 
     outputs:
-      image_tag: ${{ steps.meta.outputs.tag }}
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+      image_repo: ${{ steps.meta.outputs.image_repo }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set image tag
+      - name: Set image metadata (LOWERCASE FIX)
         id: meta
         run: |
-          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          echo "tag=ghcr.io/${REPO_LOWER}:${{ github.sha }}" >> $GITHUB_OUTPUT
+          REPO_LOWER="${GITHUB_REPOSITORY,,}"
+          echo "image_repo=ghcr.io/$REPO_LOWER" >> $GITHUB_OUTPUT
+          echo "image_tag=ghcr.io/$REPO_LOWER:${GITHUB_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Debug files (important)
+        run: ls -R
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -41,13 +46,12 @@ jobs:
 
       - name: Build & Push Image
         run: |
-          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           docker buildx build \
             --push \
             --platform linux/amd64 \
             --no-cache \
-            -t ghcr.io/${REPO_LOWER}:${{ github.sha }} \
-            -t ghcr.io/${REPO_LOWER}:latest \
+            -t ${{ steps.meta.outputs.image_tag }} \
+            -t ${{ steps.meta.outputs.image_repo }}:latest \
             .
 
   deploy:
@@ -69,7 +73,7 @@ jobs:
 
       - name: Upload stack file
         run: |
-          scp docker-stack.yml \
+          scp ./docker-stack.yml \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/opt/stacks/backend/docker-stack.yml
 
       - name: Deploy backend stack
