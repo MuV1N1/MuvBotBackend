@@ -108,4 +108,4 @@ jobs:
       - name: Cleanup Docker images
         run: |
           ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
-            "docker image prune -f"
+            "docker image prune -f && docker container prune -f"
