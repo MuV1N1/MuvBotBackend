@@ -87,6 +87,12 @@ jobs:
               
           echo "=== Docker Login Successful ==="
               
+          echo "=== Removing old stack (muvbot) if it exists ==="
+          docker stack rm muvbot || true
+              
+          echo "=== Waiting for old stack to be removed ==="
+          sleep 5
+              
           echo "=== Deploying Stack ==="
           IMAGE_TAG="${{ needs.build-and-push.outputs.image_tag }}" \
           OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
