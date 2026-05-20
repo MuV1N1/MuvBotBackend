@@ -25,7 +25,7 @@ jobs:
 
       - name: Set image tag
         id: meta
-        run: echo "tag=ghcr.io/${{ github.repository }}:${{ github.sha }}" >> $GITHUB_OUTPUT
+        run: echo "tag=ghcr.io/${{ github.repository | lower }}:${{ github.sha }}" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -43,8 +43,8 @@ jobs:
             --push \
             --platform linux/amd64 \
             --no-cache \
-            -t ghcr.io/${{ github.repository }}:${{ github.sha }} \
-            -t ghcr.io/${{ github.repository }}:latest \
+            -t ghcr.io/${{ github.repository | lower }}:${{ github.sha }} \
+            -t ghcr.io/${{ github.repository | lower }}:latest \
             .
 
   deploy:
