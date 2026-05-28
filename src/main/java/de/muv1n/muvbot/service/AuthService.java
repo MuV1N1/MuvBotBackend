@@ -59,6 +59,8 @@ public class AuthService {
 
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(map, headers);
 
+        logger.info("Discord token exchange — redirect_uri: {}", redirectUri);
+
         try {
             ResponseEntity<Map> response = restTemplate.postForEntity(tokenUrl, request, Map.class);
             Map<String, Object> body = response.getBody();
