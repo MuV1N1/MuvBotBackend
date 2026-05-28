@@ -76,46 +76,62 @@ jobs:
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/opt/stacks/backend/docker-stack.yml
 
       - name: Deploy backend stack
+        env:
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DB_URL: ${{ secrets.DB_URL }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASS: ${{ secrets.DB_PASS }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
+          DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
+          DISCORD_REDIRECT_URI: ${{ secrets.DISCORD_REDIRECT_URI }}
+          CORS_ALLOWED_ORIGINS: ${{ secrets.CORS_ALLOWED_ORIGINS }}
         run: |
-          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} bash << 'EOF'
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
+            IMAGE_TAG="${IMAGE_TAG}" \
+            GHCR_TOKEN="${GHCR_TOKEN}" \
+            GITHUB_ACTOR="${GITHUB_ACTOR}" \
+            OPENAI_API_KEY="${OPENAI_API_KEY}" \
+            DB_URL="${DB_URL}" \
+            DB_USER="${DB_USER}" \
+            DB_PASS="${DB_PASS}" \
+            DISCORD_BOT_TOKEN="${DISCORD_BOT_TOKEN}" \
+            DISCORD_CLIENT_ID="${DISCORD_CLIENT_ID}" \
+            DISCORD_CLIENT_SECRET="${DISCORD_CLIENT_SECRET}" \
+            DISCORD_REDIRECT_URI="${DISCORD_REDIRECT_URI}" \
+            CORS_ALLOWED_ORIGINS="${CORS_ALLOWED_ORIGINS}" \
+            bash << 'EOF'
           set -e
-          
-          echo "=== Starting Docker Login ==="
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io \
-            -u "${{ github.actor }}" \
+
+          echo "${GHCR_TOKEN}" | docker login ghcr.io \
+            -u "${GITHUB_ACTOR}" \
             --password-stdin
-              
-          echo "=== Docker Login Successful ==="
-              
-          echo "=== Removing old stack (muvbot) if it exists ==="
-          docker stack rm muvbot || true
-              
-          echo "=== Waiting for old stack to be removed ==="
-          sleep 5
-              
-          echo "=== Deploying Stack ==="
-          IMAGE_TAG="${{ needs.build-and-push.outputs.image_tag }}" \
-          OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
-          DB_URL="${{ secrets.DB_URL }}" \
-          DB_USER="${{ secrets.DB_USER }}" \
-          DB_PASS="${{ secrets.DB_PASS }}" \
-          DISCORD_BOT_TOKEN="${{ secrets.DISCORD_BOT_TOKEN }}" \
-          DISCORD_CLIENT_ID="${{ secrets.DISCORD_CLIENT_ID }}" \
-          DISCORD_CLIENT_SECRET="${{ secrets.DISCORD_CLIENT_SECRET }}" \
-          DISCORD_REDIRECT_URI="${{ secrets.DISCORD_REDIRECT_URI }}" \
-          CORS_ALLOWED_ORIGINS="${{ secrets.CORS_ALLOWED_ORIGINS }}" \
+
+          docker pull "${IMAGE_TAG}"
+
+          IMAGE_TAG="${IMAGE_TAG}" \
+          OPENAI_API_KEY="${OPENAI_API_KEY}" \
+          DB_URL="${DB_URL}" \
+          DB_USER="${DB_USER}" \
+          DB_PASS="${DB_PASS}" \
+          DISCORD_BOT_TOKEN="${DISCORD_BOT_TOKEN}" \
+          DISCORD_CLIENT_ID="${DISCORD_CLIENT_ID}" \
+          DISCORD_CLIENT_SECRET="${DISCORD_CLIENT_SECRET}" \
+          DISCORD_REDIRECT_URI="${DISCORD_REDIRECT_URI}" \
+          CORS_ALLOWED_ORIGINS="${CORS_ALLOWED_ORIGINS}" \
           docker stack deploy \
             -c /opt/stacks/backend/docker-stack.yml \
             muvbot-backend \
             --with-registry-auth \
             --prune || { echo "Stack deploy failed!"; docker service ls; exit 1; }
-              
+
           echo "=== Stack Deploy Successful ==="
           docker service ls
-              
-          echo "=== Checking Service Status ==="
           docker service ps muvbot-backend_muvbot
-              
+
           echo "Backend deployed successfully!"
           EOF
 
