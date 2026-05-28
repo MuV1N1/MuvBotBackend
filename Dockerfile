@@ -3,7 +3,6 @@ FROM eclipse-temurin:17.0.18_8-jdk-alpine AS builder
 
 WORKDIR /app
 
-
 # Copy Gradle wrapper & dependency declarations first (layer caching)
 COPY gradlew .
 COPY gradle/ gradle/
