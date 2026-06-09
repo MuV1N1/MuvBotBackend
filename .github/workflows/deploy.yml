@@ -75,41 +75,6 @@ jobs:
           scp docker-stack.yml \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/opt/stacks/backend/docker-stack.yml
 
-      - name: Ensure PostgreSQL is running
-        run: |
-          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} bash << 'EOF'
-          set -e
-          if docker inspect postgres17 > /dev/null 2>&1; then
-            STATUS=$(docker inspect -f '{{.State.Status}}' postgres17)
-            if [ "$STATUS" != "running" ]; then
-              echo "Container postgres17 exists but is $STATUS — starting it..."
-              docker start postgres17
-            else
-              echo "Container postgres17 is already running."
-            fi
-          else
-            echo "Container postgres17 does not exist — creating and starting it..."
-            docker run -d \
-              --name postgres17 \
-              -e POSTGRES_USER=postgres \
-              -e POSTGRES_PASSWORD=123456 \
-              -e POSTGRES_DB=defaultdb \
-              -p 5432:5432 \
-              -v pgdata:/var/lib/postgresql/data \
-              postgres:17
-          fi
-          echo "Waiting for PostgreSQL to be ready..."
-          for i in $(seq 1 30); do
-            if docker exec postgres17 pg_isready -U postgres > /dev/null 2>&1; then
-              echo "PostgreSQL is ready."
-              break
-            fi
-            echo "Attempt $i/30 — not ready yet, waiting 2s..."
-            sleep 2
-          done
-          docker exec postgres17 pg_isready -U postgres || { echo "PostgreSQL did not become ready in time!"; exit 1; }
-          EOF
-
       - name: Deploy backend stack
         env:
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
