@@ -28,6 +28,12 @@ public class User {
     @Column(name = "token_expires_at")
     private LocalDateTime tokenExpiresAt;
 
+    @Column(name = "minecraft_username")
+    private String minecraftUsername;
+
+    @Column(name = "minecraft_uuid")
+    private String minecraftUuid;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_hidden_guilds", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "guild_id")

@@ -7,6 +7,7 @@ public class GuildSettingsDto {
     private WelcomeSettings welcome = new WelcomeSettings();
     private ModerationSettings moderation = new ModerationSettings();
     private QuitSettings quit = new QuitSettings();
+    private McWhitelistSettings mcWhitelist = new McWhitelistSettings();
 
     @Data
     public static class GeneralSettings {
@@ -38,6 +39,11 @@ public class GuildSettingsDto {
 
     @Data
     public static class ModerationSettings {
+        private boolean enabled;
+    }
+
+    @Data
+    public static class McWhitelistSettings {
         private boolean enabled;
     }
 }

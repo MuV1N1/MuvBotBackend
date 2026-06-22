@@ -232,6 +232,9 @@ public class GuildService {
         dto.getQuit().setChannelId(map.getOrDefault("quit.channelId", ""));
         dto.getQuit().setChannelName(map.getOrDefault("quit.channelName", ""));
 
+        // MC Whitelist
+        dto.getMcWhitelist().setEnabled(map.getOrDefault("mc-whitelist.enabled", "false").equalsIgnoreCase("true"));
+
         return dto;
     }
 
@@ -262,6 +265,7 @@ public class GuildService {
         saveGeneralSettings(guildId, guild.getName(), map, dto);
         saveWelcomeSettings(guildId, guild.getName(), map, dto);
         saveQuitSettings(guildId, guild.getName(), map, dto);
+        saveMcWhitelistSettings(guildId, guild.getName(), map, dto);
     }
 
     private void saveSetting(String guildId, String guildName, Map<String, GuildSetting> map, String key, String value) {
@@ -322,5 +326,9 @@ public class GuildService {
         saveSetting(guildId, guildName, map, "quit.message", dto.getQuit().getMessage());
         saveSetting(guildId, guildName, map, "quit.channelId", String.valueOf(dto.getQuit().getChannelId()));
         saveSetting(guildId, guildName, map, "quit.channelName", String.valueOf(dto.getQuit().getChannelName()));
+    }
+
+    private void saveMcWhitelistSettings(String guildId, String guildName, Map<String, GuildSetting> map, GuildSettingsDto dto) {
+        saveSetting(guildId, guildName, map, "mc-whitelist.enabled", String.valueOf(dto.getMcWhitelist().isEnabled()));
     }
 }
