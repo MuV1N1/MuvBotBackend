@@ -130,8 +130,10 @@ jobs:
 
           echo "=== Stack Deploy Successful ==="
           docker service ls
-          docker service ps muvbot-backend_muvbot
 
+          docker service update --force --detach=false muvbot-backend_muvbot
+
+          docker service ps muvbot-backend_muvbot
           echo "Backend deployed successfully!"
           EOF
 
