@@ -218,19 +218,16 @@ public class GuildService {
         // Welcome
         dto.getWelcome().setEnabled(guild.isWelcomeActive());
         dto.getWelcome().setMessage(map.getOrDefault("welcome.message", "Welcome {user}!"));
-        dto.getWelcome().setChannelId(map.getOrDefault("welcome.channelId", ""));
-        dto.getWelcome().setChannelName(map.getOrDefault("welcome.channelName", ""));
+        dto.getWelcome().setChannelIds(splitIds(map.getOrDefault("welcome.channelIds", "")));
         dto.getWelcome().setAiEnabled(map.getOrDefault("welcome.ai.message", "false").equalsIgnoreCase("true"));
         dto.getWelcome().setAiPrompt(map.getOrDefault("welcome.ai.prompt", ""));
         dto.getWelcome().setRoleOnJoinEnabled(map.getOrDefault("welcome.role.onjoin.enabled", "false").equalsIgnoreCase("true"));
-        dto.getWelcome().setRoleOnJoinId(map.getOrDefault("welcome.role.onjoin.roleId", ""));
-        dto.getWelcome().setRoleOnJoinName(map.getOrDefault("welcome.role.onjoin.roleName", ""));
+        dto.getWelcome().setRoleOnJoinIds(splitIds(map.getOrDefault("welcome.role.onjoin.roleIds", "")));
 
         // Quit
         dto.getQuit().setEnabled(map.getOrDefault("quit.enabled", "false").equalsIgnoreCase("true"));
         dto.getQuit().setMessage(map.getOrDefault("quit.message", "Goodbye {user}!"));
-        dto.getQuit().setChannelId(map.getOrDefault("quit.channelId", ""));
-        dto.getQuit().setChannelName(map.getOrDefault("quit.channelName", ""));
+        dto.getQuit().setChannelIds(splitIds(map.getOrDefault("quit.channelIds", "")));
 
         // MC Whitelist
         dto.getMcWhitelist().setEnabled(map.getOrDefault("mc-whitelist.enabled", "false").equalsIgnoreCase("true"));
@@ -312,23 +309,33 @@ public class GuildService {
     private void saveWelcomeSettings(String guildId, String guildName, Map<String, GuildSetting> map, GuildSettingsDto dto) {
         saveSetting(guildId, guildName, map, "welcome.enabled", String.valueOf(dto.getWelcome().isEnabled()));
         saveSetting(guildId, guildName, map, "welcome.message", dto.getWelcome().getMessage());
-        saveSetting(guildId, guildName, map, "welcome.channelId", String.valueOf(dto.getWelcome().getChannelId()));
-        saveSetting(guildId, guildName, map, "welcome.channelName", String.valueOf(dto.getWelcome().getChannelName()));
+        saveSetting(guildId, guildName, map, "welcome.channelIds", joinIds(dto.getWelcome().getChannelIds()));
         saveSetting(guildId, guildName, map, "welcome.ai.message", String.valueOf(dto.getWelcome().isAiEnabled()));
         saveSetting(guildId, guildName, map, "welcome.ai.prompt", dto.getWelcome().getAiPrompt());
         saveSetting(guildId, guildName, map, "welcome.role.onjoin.enabled", String.valueOf(dto.getWelcome().isRoleOnJoinEnabled()));
-        saveSetting(guildId, guildName, map, "welcome.role.onjoin.roleId", String.valueOf(dto.getWelcome().getRoleOnJoinId()));
-        saveSetting(guildId, guildName, map, "welcome.role.onjoin.roleName", String.valueOf(dto.getWelcome().getRoleOnJoinName()));
+        saveSetting(guildId, guildName, map, "welcome.role.onjoin.roleIds", joinIds(dto.getWelcome().getRoleOnJoinIds()));
     }
 
     private void saveQuitSettings(String guildId, String guildName, Map<String, GuildSetting> map, GuildSettingsDto dto) {
         saveSetting(guildId, guildName, map, "quit.enabled", String.valueOf(dto.getQuit().isEnabled()));
         saveSetting(guildId, guildName, map, "quit.message", dto.getQuit().getMessage());
-        saveSetting(guildId, guildName, map, "quit.channelId", String.valueOf(dto.getQuit().getChannelId()));
-        saveSetting(guildId, guildName, map, "quit.channelName", String.valueOf(dto.getQuit().getChannelName()));
+        saveSetting(guildId, guildName, map, "quit.channelIds", joinIds(dto.getQuit().getChannelIds()));
     }
 
     private void saveMcWhitelistSettings(String guildId, String guildName, Map<String, GuildSetting> map, GuildSettingsDto dto) {
         saveSetting(guildId, guildName, map, "mc-whitelist.enabled", String.valueOf(dto.getMcWhitelist().isEnabled()));
+    }
+
+    private List<String> splitIds(String value) {
+        if (value == null || value.isBlank()) return new ArrayList<>();
+        return java.util.Arrays.stream(value.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
+    }
+
+    private String joinIds(List<String> ids) {
+        if (ids == null || ids.isEmpty()) return "";
+        return String.join(",", ids);
     }
 }

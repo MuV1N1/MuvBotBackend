@@ -1,5 +1,9 @@
 package de.muv1n.muvbot.api.dto;
+
 import lombok.Data;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 public class GuildSettingsDto {
@@ -19,22 +23,18 @@ public class GuildSettingsDto {
     public static class WelcomeSettings {
         private boolean enabled;
         private String message;
-        private String channelId;
-        private String channelName;
+        private List<String> channelIds = new ArrayList<>();
         private boolean aiEnabled;
         private String aiPrompt;
         private boolean roleOnJoinEnabled;
-        private String roleOnJoinId;
-        private String roleOnJoinName;
-
+        private List<String> roleOnJoinIds = new ArrayList<>();
     }
 
     @Data
     public static class QuitSettings {
         private boolean enabled;
         private String message;
-        private String channelId;
-        private String channelName;
+        private List<String> channelIds = new ArrayList<>();
     }
 
     @Data
