@@ -3,6 +3,7 @@ package de.muv1n.muvbot.service;
 import de.muv1n.muvbot.api.dto.ChannelDto;
 import de.muv1n.muvbot.api.dto.GuildSettingsDto;
 import de.muv1n.muvbot.api.dto.RolesDto;
+import de.muv1n.muvbot.bot.LinkCommandListener;
 import de.muv1n.muvbot.entity.Guild;
 import de.muv1n.muvbot.entity.GuildSetting;
 import de.muv1n.muvbot.repository.GuildSettingRepository;
@@ -263,6 +264,15 @@ public class GuildService {
         saveWelcomeSettings(guildId, guild.getName(), map, dto);
         saveQuitSettings(guildId, guild.getName(), map, dto);
         saveMcWhitelistSettings(guildId, guild.getName(), map, dto);
+
+        // Register or unregister /link slash command based on mc-whitelist toggle
+        if (jdaGuild != null) {
+            if (dto.getMcWhitelist().isEnabled()) {
+                LinkCommandListener.registerCommand(jdaGuild);
+            } else {
+                LinkCommandListener.unregisterCommand(jdaGuild);
+            }
+        }
     }
 
     private void saveSetting(String guildId, String guildName, Map<String, GuildSetting> map, String key, String value) {
