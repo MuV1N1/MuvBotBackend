@@ -17,6 +17,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.HttpClientErrorException;
@@ -54,7 +55,10 @@ public class GuildService {
         this.guildSettingRepository = guildSettingRepository;
         this.guildRepository = guildRepository;
         this.userRepository = userRepository;
-        this.restTemplate = new RestTemplate();
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5_000);
+        factory.setReadTimeout(10_000);
+        this.restTemplate = new RestTemplate(factory);
         this.jDA = jDA;
     }
 
@@ -161,37 +165,44 @@ public class GuildService {
                 user = userRepository.findByDiscordId(userId).orElse(null);
             }
 
-            for (Map<String, Object> g : discordGuilds) {
-                String permString = g.get("permissions").toString();
-                if (permString == null) continue;
+            List<Map<String, Object>> adminGuilds = discordGuilds.stream()
+                    .filter(g -> g.get("permissions") != null)
+                    .filter(g -> {
+                        long p = Long.parseLong(g.get("permissions").toString());
+                        return (p & Permission.ADMINISTRATOR.getRawValue()) != 0
+                            || (p & Permission.MANAGE_SERVER.getRawValue()) != 0;
+                    })
+                    .toList();
 
-                long permissions = Long.parseLong(g.get("permissions").toString());
-                boolean isAdmin = (permissions & Permission.ADMINISTRATOR.getRawValue()) != 0;
-                boolean canManage = (permissions & Permission.MANAGE_SERVER.getRawValue()) != 0;
+            List<String> adminGuildIds = adminGuilds.stream()
+                    .map(g -> (String) g.get("id"))
+                    .toList();
 
-                if (isAdmin || canManage) {
-                    Guild guild = new Guild();
-                    String guildId = (String) g.get("id");
-                    guild.setDiscordId(guildId);
-                    guild.setName((String) g.get("name"));
-                    String icon = (String) g.get("icon");
-                    if (icon != null) {
-                        guild.setIconUrl("https://cdn.discordapp.com/icons/" + guildId + "/" + icon + ".png");
-                    }
-                    net.dv8tion.jda.api.entities.Guild jdaGuild = jda.getGuildById(guildId);
-                    guild.setBotInstalled(jdaGuild != null);
+            Map<String, Guild> dbGuildMap = guildRepository.findAllById(adminGuildIds).stream()
+                    .collect(Collectors.toMap(Guild::getDiscordId, Function.identity()));
 
-                    // Merge DB State
-                    guildRepository.findById(guildId).ifPresent(dbGuild -> {
-                        guild.setWelcomeActive(dbGuild.isWelcomeActive());
-                    });
-                    
-                    if (user != null && user.getHiddenGuildIds() != null) {
-                        guild.setHidden(user.getHiddenGuildIds().contains(guildId));
-                    }
-
-                    mutualGuilds.add(guild);
+            for (Map<String, Object> g : adminGuilds) {
+                Guild guild = new Guild();
+                String guildId = (String) g.get("id");
+                guild.setDiscordId(guildId);
+                guild.setName((String) g.get("name"));
+                String icon = (String) g.get("icon");
+                if (icon != null) {
+                    guild.setIconUrl("https://cdn.discordapp.com/icons/" + guildId + "/" + icon + ".png");
                 }
+                net.dv8tion.jda.api.entities.Guild jdaGuild = jda.getGuildById(guildId);
+                guild.setBotInstalled(jdaGuild != null);
+
+                Guild dbGuild = dbGuildMap.get(guildId);
+                if (dbGuild != null) {
+                    guild.setWelcomeActive(dbGuild.isWelcomeActive());
+                }
+
+                if (user != null && user.getHiddenGuildIds() != null) {
+                    guild.setHidden(user.getHiddenGuildIds().contains(guildId));
+                }
+
+                mutualGuilds.add(guild);
             }
 
             // In Cache speichern
