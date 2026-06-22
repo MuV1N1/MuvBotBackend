@@ -12,11 +12,11 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     deploy:
-      replicas: 1
+      replicas: 2
       restart_policy:
         condition: any
-        delay: 5s
-        max_attempts: 0
+        delay: 20s
+        max_attempts: 1
 
   muvbot:
     image: ${IMAGE_TAG}
@@ -57,7 +57,7 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 60s
+      start_period: 120s
 
 networks:
   mynet:
