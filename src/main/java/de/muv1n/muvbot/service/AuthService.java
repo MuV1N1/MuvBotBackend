@@ -9,7 +9,6 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -39,12 +38,9 @@ public class AuthService {
     private final UserRepository userRepository;
     private final RestTemplate restTemplate;
 
-    public AuthService(UserRepository userRepository) {
+    public AuthService(UserRepository userRepository, RestTemplate discordRestTemplate) {
         this.userRepository = userRepository;
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(5_000);
-        factory.setReadTimeout(10_000);
-        this.restTemplate = new RestTemplate(factory);
+        this.restTemplate = discordRestTemplate;
     }
 
     public Map<String, Object> handleLogin(String code) {

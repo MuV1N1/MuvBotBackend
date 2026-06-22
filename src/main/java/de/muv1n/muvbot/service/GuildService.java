@@ -17,7 +17,6 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.HttpClientErrorException;
@@ -47,15 +46,12 @@ public class GuildService {
 
     private record UserCacheEntry(long timestamp, String userId) {}
 
-    public GuildService(JDA jda, GuildSettingRepository guildSettingRepository, GuildRepository guildRepository, UserRepository userRepository) {
+    public GuildService(JDA jda, GuildSettingRepository guildSettingRepository, GuildRepository guildRepository, UserRepository userRepository, RestTemplate discordRestTemplate) {
         this.jda = jda;
         this.guildSettingRepository = guildSettingRepository;
         this.guildRepository = guildRepository;
         this.userRepository = userRepository;
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(5_000);
-        factory.setReadTimeout(10_000);
-        this.restTemplate = new RestTemplate(factory);
+        this.restTemplate = discordRestTemplate;
     }
 
     public Guild getGuild(String guildId, String bearerToken) {
