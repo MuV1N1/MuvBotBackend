@@ -35,7 +35,7 @@ services:
       DISCORD_REDIRECT_URI: "${DISCORD_REDIRECT_URI}"
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS}"
     deploy:
-      replicas: 2
+      replicas: 1
       update_config:
         parallelism: 1
         delay: 10s
