@@ -39,18 +39,15 @@ public class GuildService {
     private final UserRepository userRepository;
 
     private final Map<String, CacheEntry> guildCache = new ConcurrentHashMap<>();
-    private static final long CACHE_DURATION = 60_000; // 1 Minute in ms
-    private final JDA jDA;
+    private static final long CACHE_DURATION = 60_000;
 
-    private record CacheEntry(long timestamp, List<Guild> guilds) {
-    }
+    private record CacheEntry(long timestamp, List<Guild> guilds) {}
 
     private final Map<String, UserCacheEntry> userCache = new ConcurrentHashMap<>();
 
-    private record UserCacheEntry(long timestamp, String userId) {
-    }
+    private record UserCacheEntry(long timestamp, String userId) {}
 
-    public GuildService(JDA jda, GuildSettingRepository guildSettingRepository, GuildRepository guildRepository, UserRepository userRepository, JDA jDA) {
+    public GuildService(JDA jda, GuildSettingRepository guildSettingRepository, GuildRepository guildRepository, UserRepository userRepository) {
         this.jda = jda;
         this.guildSettingRepository = guildSettingRepository;
         this.guildRepository = guildRepository;
@@ -59,25 +56,9 @@ public class GuildService {
         factory.setConnectTimeout(5_000);
         factory.setReadTimeout(10_000);
         this.restTemplate = new RestTemplate(factory);
-        this.jDA = jDA;
     }
 
     public Guild getGuild(String guildId, String bearerToken) {
-        net.dv8tion.jda.api.entities.Guild jdaGuild = jda.getGuildById(guildId);
-        if (jdaGuild != null) {
-            String userId = getUserId(bearerToken);
-            if (userId != null) {
-                try {
-                    net.dv8tion.jda.api.entities.Member member = jdaGuild.retrieveMemberById(userId).complete();
-                    if (member != null && (member.hasPermission(Permission.ADMINISTRATOR) || member.hasPermission(Permission.MANAGE_SERVER))) {
-                        return mapJdaGuildToEntity(jdaGuild);
-                    }
-                } catch (Exception e) {
-                    // Ignore and fallback
-                }
-            }
-        }
-
         List<Guild> mutualGuilds = getMutualGuilds(bearerToken);
         for (Guild g : mutualGuilds) {
             if (g.getDiscordId().equals(guildId)) {
@@ -94,9 +75,7 @@ public class GuildService {
         guild.setIconUrl(jdaGuild.getIconUrl());
         guild.setBotInstalled(true);
 
-        guildRepository.findById(jdaGuild.getId()).ifPresent(dbGuild -> {
-            guild.setWelcomeActive(dbGuild.isWelcomeActive());
-        });
+        guildRepository.findById(jdaGuild.getId()).ifPresent(dbGuild -> guild.setWelcomeActive(dbGuild.isWelcomeActive()));
         return guild;
     }
 
