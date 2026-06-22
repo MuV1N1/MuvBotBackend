@@ -51,7 +51,7 @@ services:
         window: 120s
       resources:
         limits:
-          memory: 512M
+          memory: 2G
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/healthcheck || exit 1"]
       interval: 15s
