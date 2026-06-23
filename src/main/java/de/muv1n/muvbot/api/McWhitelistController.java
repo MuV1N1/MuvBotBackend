@@ -1,7 +1,9 @@
 package de.muv1n.muvbot.api;
 
 import de.muv1n.muvbot.api.dto.extensions.mc.McServerCreateDto;
+import de.muv1n.muvbot.api.dto.extensions.mc.McServerOrderDto;
 import de.muv1n.muvbot.api.dto.extensions.mc.McServerRolesDto;
+import de.muv1n.muvbot.api.dto.extensions.mc.McServerUpdateDto;
 import de.muv1n.muvbot.api.dto.extensions.mc.WhitelistDto;
 import de.muv1n.muvbot.entity.Guild;
 import de.muv1n.muvbot.entity.extensions.mc.McServer;
@@ -66,6 +68,30 @@ public class McWhitelistController {
 
         boolean deleted = mcWhitelistService.deleteServer(guildId, serverId);
         return deleted ? ResponseEntity.ok().build() : ResponseEntity.notFound().build();
+    }
+
+    @PatchMapping("/api/guilds/{guildId}/mc/servers/{serverId}")
+    public ResponseEntity<WhitelistDto> updateServer(
+            @PathVariable String guildId,
+            @PathVariable String serverId,
+            @RequestBody McServerUpdateDto dto,
+            @RequestHeader("Authorization") String token) {
+        Guild guild = guildService.getGuild(guildId, token);
+        if (guild == null) return ResponseEntity.notFound().build();
+        McServer server = mcWhitelistService.updateServer(guildId, serverId, dto.getServerName(), dto.getServerIp(), dto.getServerVersion());
+        if (server == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(new WhitelistDto(server.getId(), server.getServerName(), server.getServerIp(), server.getServerVersion(), server.getWhitelistRoleIds()));
+    }
+
+    @PutMapping("/api/guilds/{guildId}/mc/servers/order")
+    public ResponseEntity<Void> updateOrder(
+            @PathVariable String guildId,
+            @RequestBody McServerOrderDto dto,
+            @RequestHeader("Authorization") String token) {
+        Guild guild = guildService.getGuild(guildId, token);
+        if (guild == null) return ResponseEntity.notFound().build();
+        mcWhitelistService.updateOrder(guildId, dto.getServerIds());
+        return ResponseEntity.ok().build();
     }
 
     @PutMapping("/api/guilds/{guildId}/mc/servers/{serverId}/roles")

@@ -27,6 +27,9 @@ public class McServer {
     @Column(name = "server_version")
     private String serverVersion;
 
+    @Column(name = "sort_order")
+    private Integer sortOrder;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "mc_server_whitelist_roles", joinColumns = @JoinColumn(name = "server_id"))
     @Column(name = "role_id")

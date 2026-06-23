@@ -51,18 +51,39 @@ public class McWhitelistService {
     }
 
     public List<McServer> getServers(String guildId) {
-        return mcServerRepository.findByGuildId(guildId);
+        return mcServerRepository.findByGuildIdOrderBySortOrder(guildId);
     }
 
     public McServer createServer(String guildId, String serverName, String serverIp, String serverVersion) {
+        int nextOrder = mcServerRepository.findByGuildIdOrderBySortOrder(guildId).size();
         McServer server = new McServer();
         server.setId(UUID.randomUUID().toString());
         server.setGuildId(guildId);
         server.setServerName(serverName);
         server.setServerIp(serverIp);
         server.setServerVersion(serverVersion);
+        server.setSortOrder(nextOrder);
         server.setCreatedAt(LocalDateTime.now());
         return mcServerRepository.save(server);
+    }
+
+    public McServer updateServer(String guildId, String serverId, String serverName, String serverIp, String serverVersion) {
+        McServer server = mcServerRepository.findById(serverId).orElse(null);
+        if (server == null || !server.getGuildId().equals(guildId)) return null;
+        server.setServerName(serverName);
+        server.setServerIp(serverIp);
+        server.setServerVersion(serverVersion);
+        return mcServerRepository.save(server);
+    }
+
+    public void updateOrder(String guildId, List<String> serverIds) {
+        for (int i = 0; i < serverIds.size(); i++) {
+            McServer server = mcServerRepository.findById(serverIds.get(i)).orElse(null);
+            if (server != null && server.getGuildId().equals(guildId)) {
+                server.setSortOrder(i);
+                mcServerRepository.save(server);
+            }
+        }
     }
 
     public boolean deleteServer(String guildId, String serverId) {
