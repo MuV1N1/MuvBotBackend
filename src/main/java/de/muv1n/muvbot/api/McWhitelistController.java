@@ -39,7 +39,7 @@ public class McWhitelistController {
         if (guild == null) return ResponseEntity.notFound().build();
 
         List<WhitelistDto> servers = mcWhitelistService.getServers(guildId).stream()
-                .map(s -> new WhitelistDto(s.getId(), s.getServerName(), s.getServerIp(), s.getWhitelistRoleIds()))
+                .map(s -> new WhitelistDto(s.getId(), s.getServerName(), s.getServerIp(), s.getServerVersion(), s.getWhitelistRoleIds()))
                 .toList();
         return ResponseEntity.ok(servers);
     }
@@ -52,8 +52,8 @@ public class McWhitelistController {
         Guild guild = guildService.getGuild(guildId, token);
         if (guild == null) return ResponseEntity.notFound().build();
 
-        McServer server = mcWhitelistService.createServer(guildId, dto.getServerName(), dto.getServerIp());
-        return ResponseEntity.ok(new WhitelistDto(server.getId(), server.getServerName(), server.getServerIp(), server.getWhitelistRoleIds()));
+        McServer server = mcWhitelistService.createServer(guildId, dto.getServerName(), dto.getServerIp(), dto.getServerVersion());
+        return ResponseEntity.ok(new WhitelistDto(server.getId(), server.getServerName(), server.getServerIp(), server.getServerVersion(), server.getWhitelistRoleIds()));
     }
 
     @DeleteMapping("/api/guilds/{guildId}/mc/servers/{serverId}")
@@ -79,6 +79,6 @@ public class McWhitelistController {
 
         McServer server = mcWhitelistService.updateRoles(guildId, serverId, dto.getRoleIds());
         if (server == null) return ResponseEntity.notFound().build();
-        return ResponseEntity.ok(new WhitelistDto(server.getId(), server.getServerName(), server.getServerIp(), server.getWhitelistRoleIds()));
+        return ResponseEntity.ok(new WhitelistDto(server.getId(), server.getServerName(), server.getServerIp(), server.getServerVersion(), server.getWhitelistRoleIds()));
     }
 }

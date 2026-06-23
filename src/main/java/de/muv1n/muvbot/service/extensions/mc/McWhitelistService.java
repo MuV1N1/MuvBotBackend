@@ -54,12 +54,13 @@ public class McWhitelistService {
         return mcServerRepository.findByGuildId(guildId);
     }
 
-    public McServer createServer(String guildId, String serverName, String serverIp) {
+    public McServer createServer(String guildId, String serverName, String serverIp, String serverVersion) {
         McServer server = new McServer();
         server.setId(UUID.randomUUID().toString());
         server.setGuildId(guildId);
         server.setServerName(serverName);
         server.setServerIp(serverIp);
+        server.setServerVersion(serverVersion);
         server.setCreatedAt(LocalDateTime.now());
         return mcServerRepository.save(server);
     }

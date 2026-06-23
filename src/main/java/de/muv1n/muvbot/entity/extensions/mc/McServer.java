@@ -24,6 +24,9 @@ public class McServer {
     @Column(name = "server_ip")
     private String serverIp;
 
+    @Column(name = "server_version")
+    private String serverVersion;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "mc_server_whitelist_roles", joinColumns = @JoinColumn(name = "server_id"))
     @Column(name = "role_id")

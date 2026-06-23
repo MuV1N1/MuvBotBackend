@@ -13,5 +13,6 @@ public class WhitelistDto {
     private String id;
     private String serverName;
     private String serverIp;
+    private String serverVersion;
     private List<String> whitelistRoleIds;
 }

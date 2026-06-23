@@ -10,4 +10,5 @@ import lombok.NoArgsConstructor;
 public class McServerCreateDto {
     private String serverName;
     private String serverIp;
+    private String serverVersion;
 }
