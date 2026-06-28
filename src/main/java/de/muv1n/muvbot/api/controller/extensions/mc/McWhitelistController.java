@@ -1,4 +1,4 @@
-package de.muv1n.muvbot.api;
+package de.muv1n.muvbot.api.controller.extensions.mc;
 
 import de.muv1n.muvbot.api.dto.extensions.mc.McServerCreateDto;
 import de.muv1n.muvbot.api.dto.extensions.mc.McServerOrderDto;

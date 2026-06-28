@@ -9,9 +9,9 @@ import java.util.List;
 public class GuildSettingsDto {
     private GeneralSettings general = new GeneralSettings();
     private WelcomeSettings welcome = new WelcomeSettings();
-    private ModerationSettings moderation = new ModerationSettings();
     private QuitSettings quit = new QuitSettings();
     private McWhitelistSettings mcWhitelist = new McWhitelistSettings();
+    private TicketSystemSettings ticketSystem = new TicketSystemSettings();
 
     @Data
     public static class GeneralSettings {
@@ -37,13 +37,15 @@ public class GuildSettingsDto {
         private List<String> channelIds = new ArrayList<>();
     }
 
-    @Data
-    public static class ModerationSettings {
-        private boolean enabled;
-    }
 
     @Data
     public static class McWhitelistSettings {
         private boolean enabled;
     }
+
+    @Data
+    public static class TicketSystemSettings {
+        private boolean enabled;
+    }
 }
+

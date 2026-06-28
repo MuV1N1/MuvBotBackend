@@ -1,4 +1,4 @@
-package de.muv1n.muvbot.api;
+package de.muv1n.muvbot.api.controller;
 
 import de.muv1n.muvbot.api.dto.ChannelDto;
 import de.muv1n.muvbot.api.dto.GuildSettingsDto;
@@ -63,5 +63,4 @@ public class GuildController {
         if (guild == null) return ResponseEntity.notFound().build();
         return ResponseEntity.ok(guildService.getRoles(guildId));
     }
-
 }

@@ -1,4 +1,4 @@
-package de.muv1n.muvbot.api;
+package de.muv1n.muvbot.api.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

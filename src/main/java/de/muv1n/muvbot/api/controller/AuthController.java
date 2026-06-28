@@ -1,4 +1,4 @@
-package de.muv1n.muvbot.api;
+package de.muv1n.muvbot.api.controller;
 
 import de.muv1n.muvbot.service.AuthService;
 import org.slf4j.Logger;
