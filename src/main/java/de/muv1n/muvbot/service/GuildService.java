@@ -3,6 +3,7 @@ package de.muv1n.muvbot.service;
 import de.muv1n.muvbot.api.dto.ChannelDto;
 import de.muv1n.muvbot.api.dto.GuildSettingsDto;
 import de.muv1n.muvbot.api.dto.RolesDto;
+import de.muv1n.muvbot.api.dto.TicketSystemDto;
 import de.muv1n.muvbot.bot.LinkCommandListener;
 import de.muv1n.muvbot.entity.Guild;
 import de.muv1n.muvbot.entity.GuildSetting;
@@ -233,6 +234,26 @@ public class GuildService {
         // MC Whitelist
         dto.getMcWhitelist().setEnabled(map.getOrDefault("mc-whitelist.enabled", "false").equalsIgnoreCase("true"));
 
+        // Ticket System
+        dto.getTicketSystem().setEnabled(map.getOrDefault("ticket-system.enabled", "false").equalsIgnoreCase("true"));
+        dto.getTicketSystem().getPanel().setChannelId(map.getOrDefault("ticket-system.panel.channelId", ""));
+        dto.getTicketSystem().getPanel().setTitle(map.getOrDefault("ticket-system.panel.title", "Support Tickets"));
+        dto.getTicketSystem().getPanel().setDescription(map.getOrDefault("ticket-system.panel.description", "Open a ticket if you need help."));
+        dto.getTicketSystem().getPanel().setButtonLabel(map.getOrDefault("ticket-system.panel.buttonLabel", "Create Ticket"));
+        dto.getTicketSystem().getPanel().setButtonEmoji(map.getOrDefault("ticket-system.panel.buttonEmoji", ""));
+        dto.getTicketSystem().getTicket().setCategoryId(map.getOrDefault("ticket-system.ticket.categoryId", ""));
+        dto.getTicketSystem().getTicket().setLogChannelId(map.getOrDefault("ticket-system.ticket.logChannelId", ""));
+        dto.getTicketSystem().getTicket().setNamePrefix(map.getOrDefault("ticket-system.ticket.namePrefix", "ticket"));
+        dto.getTicketSystem().getTicket().setMaxOpenTicketsPerUser(
+                parseIntOrDefault(map.get("ticket-system.ticket.maxOpenTicketsPerUser"), 1)
+        );
+        dto.getTicketSystem().getAccess().setSupportRoleIds(
+                splitIds(map.getOrDefault("ticket-system.access.supportRoleIds", ""))
+        );
+        dto.getTicketSystem().getAccess().setAdminRoleIds(
+                splitIds(map.getOrDefault("ticket-system.access.adminRoleIds", ""))
+        );
+
         return dto;
     }
 
@@ -264,6 +285,7 @@ public class GuildService {
         saveWelcomeSettings(guildId, guild.getName(), map, dto);
         saveQuitSettings(guildId, guild.getName(), map, dto);
         saveMcWhitelistSettings(guildId, guild.getName(), map, dto);
+        saveTicketSystemSettings(guildId, guild.getName(), map, dto);
 
         // Register or unregister /link slash command based on mc-whitelist toggle
         if (jdaGuild != null) {
@@ -336,6 +358,28 @@ public class GuildService {
         saveSetting(guildId, guildName, map, "mc-whitelist.enabled", String.valueOf(dto.getMcWhitelist().isEnabled()));
     }
 
+    private void saveTicketSystemSettings(String guildId, String guildName, Map<String, GuildSetting> map, GuildSettingsDto dto) {
+        TicketSystemDto ticketSystem = dto.getTicketSystem();
+        saveSetting(guildId, guildName, map, "ticket-system.enabled", String.valueOf(ticketSystem.isEnabled()));
+        saveSetting(guildId, guildName, map, "ticket-system.panel.channelId", ticketSystem.getPanel().getChannelId());
+        saveSetting(guildId, guildName, map, "ticket-system.panel.title", ticketSystem.getPanel().getTitle());
+        saveSetting(guildId, guildName, map, "ticket-system.panel.description", ticketSystem.getPanel().getDescription());
+        saveSetting(guildId, guildName, map, "ticket-system.panel.buttonLabel", ticketSystem.getPanel().getButtonLabel());
+        saveSetting(guildId, guildName, map, "ticket-system.panel.buttonEmoji", ticketSystem.getPanel().getButtonEmoji());
+        saveSetting(guildId, guildName, map, "ticket-system.ticket.categoryId", ticketSystem.getTicket().getCategoryId());
+        saveSetting(guildId, guildName, map, "ticket-system.ticket.logChannelId", ticketSystem.getTicket().getLogChannelId());
+        saveSetting(guildId, guildName, map, "ticket-system.ticket.namePrefix", ticketSystem.getTicket().getNamePrefix());
+        saveSetting(
+                guildId,
+                guildName,
+                map,
+                "ticket-system.ticket.maxOpenTicketsPerUser",
+                String.valueOf(ticketSystem.getTicket().getMaxOpenTicketsPerUser())
+        );
+        saveSetting(guildId, guildName, map, "ticket-system.access.supportRoleIds", joinIds(ticketSystem.getAccess().getSupportRoleIds()));
+        saveSetting(guildId, guildName, map, "ticket-system.access.adminRoleIds", joinIds(ticketSystem.getAccess().getAdminRoleIds()));
+    }
+
     private List<String> splitIds(String value) {
         if (value == null || value.isBlank()) return new ArrayList<>();
         return java.util.Arrays.stream(value.split(","))
@@ -347,5 +391,14 @@ public class GuildService {
     private String joinIds(List<String> ids) {
         if (ids == null || ids.isEmpty()) return "";
         return String.join(",", ids);
+    }
+
+    private int parseIntOrDefault(String value, int fallback) {
+        if (value == null || value.isBlank()) return fallback;
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException ignored) {
+            return fallback;
+        }
     }
 }
