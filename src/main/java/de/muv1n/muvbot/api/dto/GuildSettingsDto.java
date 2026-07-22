@@ -11,7 +11,7 @@ public class GuildSettingsDto {
     private WelcomeSettings welcome = new WelcomeSettings();
     private QuitSettings quit = new QuitSettings();
     private McWhitelistSettings mcWhitelist = new McWhitelistSettings();
-    private TicketSystemSettings ticketSystem = new TicketSystemSettings();
+    private TicketSystemDto ticketSystem = new TicketSystemDto();
 
     @Data
     public static class GeneralSettings {
@@ -42,10 +42,4 @@ public class GuildSettingsDto {
     public static class McWhitelistSettings {
         private boolean enabled;
     }
-
-    @Data
-    public static class TicketSystemSettings {
-        private boolean enabled;
-    }
 }
-

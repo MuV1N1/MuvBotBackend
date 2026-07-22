@@ -17,6 +17,8 @@ services:
         condition: any
         delay: 20s
         max_attempts: 1
+    ports:
+      - "127.0.0.1:5432:5432"
 
   muvbot:
     image: ${IMAGE_TAG}
