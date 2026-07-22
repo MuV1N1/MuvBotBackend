@@ -1,44 +1,34 @@
 name: Backend Build & Deploy
-
 on:
   push:
     branches:
       - main
-
 env:
   STACK_NAME: muvbot-backend
-
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-
     permissions:
       contents: read
       packages: write
-
     outputs:
       image_tag: ${{ steps.meta.outputs.tag }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set image tag
         id: meta
         run: |
           REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           echo "tag=ghcr.io/${REPO_LOWER}:${{ github.sha }}" >> $GITHUB_OUTPUT
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Build & Push Image
         run: |
           REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
@@ -49,32 +39,26 @@ jobs:
             -t ghcr.io/${REPO_LOWER}:${{ github.sha }} \
             -t ghcr.io/${REPO_LOWER}:latest \
             .
-
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "${{ secrets.SERVER_IP }}" >> ~/.ssh/known_hosts
-
       - name: Create backend directory
         run: |
           ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
             "mkdir -p /opt/stacks/backend"
-
       - name: Upload stack file
         run: |
           scp docker-stack.yml \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/opt/stacks/backend/docker-stack.yml
-
       - name: Deploy backend stack
         env:
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
@@ -105,13 +89,10 @@ jobs:
             CORS_ALLOWED_ORIGINS="${CORS_ALLOWED_ORIGINS}" \
             bash << 'EOF'
           set -e
-
           echo "${GHCR_TOKEN}" | docker login ghcr.io \
             -u "${GITHUB_ACTOR}" \
             --password-stdin
-
           docker pull "${IMAGE_TAG}"
-
           IMAGE_TAG="${IMAGE_TAG}" \
           OPENAI_API_KEY="${OPENAI_API_KEY}" \
           DB_URL="${DB_URL}" \
@@ -127,17 +108,56 @@ jobs:
             muvbot-backend \
             --with-registry-auth \
             --prune || { echo "Stack deploy failed!"; docker service ls; exit 1; }
-
           echo "=== Stack Deploy Successful ==="
           docker service ls
-
           docker service update --force --detach=false muvbot-backend_muvbot
-
           docker service ps muvbot-backend_muvbot
           echo "Backend deployed successfully!"
           EOF
-
       - name: Cleanup Docker images
+        env:
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
         run: |
           ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
-            "docker image prune -f && docker container prune -f"
+            IMAGE_TAG="${IMAGE_TAG}" \
+            KEEP_N="3" \
+            bash << 'EOF'
+          set -e
+          REPO="${IMAGE_TAG%%:*}"
+          CURRENT_TAG="${IMAGE_TAG##*:}"
+
+          echo "Repo: $REPO"
+          echo "Just-deployed tag (always kept): $CURRENT_TAG"
+
+          # 1. Clear stopped containers FIRST so their images become prunable
+          docker container prune -f
+
+          # 2. Build keep-list: current tag, "latest", + N most recent by build time
+          mapfile -t ALL_TAGS < <(docker images "$REPO" --format '{{.Tag}}|{{.CreatedAt}}' \
+            | sort -t'|' -k2 -r | cut -d'|' -f1)
+
+          KEEP_LIST=("$CURRENT_TAG" "latest")
+          i=0
+          for t in "${ALL_TAGS[@]}"; do
+            if (( i < KEEP_N )); then
+              KEEP_LIST+=("$t")
+            fi
+            ((i++)) || true
+          done
+
+          # 3. Remove anything not in the keep-list
+          for t in "${ALL_TAGS[@]}"; do
+            keep=false
+            for k in "${KEEP_LIST[@]}"; do
+              [[ "$t" == "$k" ]] && keep=true && break
+            done
+            if ! $keep; then
+              echo "Removing $REPO:$t"
+              docker rmi "$REPO:$t" || echo "  (skip - still referenced, e.g. shared layer)"
+            fi
+          done
+
+          # 4. Catch any leftover dangling layers
+          docker image prune -f
+          echo "Cleanup complete."
+          EOF
